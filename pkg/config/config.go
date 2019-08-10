@@ -1,7 +1,6 @@
 package config
 
 type Config struct {
-	Debug bool
-	Port  int
+	Debug bool `default:"false" envconfig:"DEBUG"`
+	Port  int  `envconfig:"PORT"`
 }
-
