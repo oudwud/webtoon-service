@@ -68,6 +68,7 @@ func writeErrorResp(c *gin.Context, err error) {
 
 func mergeImagesHandler(c *gin.Context) {
 	if err := mergeImages(c); err != nil {
+		log.Error("fail to merge images: ", err)
 		writeErrorResp(c, err)
 		return
 	}
