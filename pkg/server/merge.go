@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"strconv"
@@ -48,15 +49,21 @@ func mergeImages(c *gin.Context) error {
 		return wrapError(http.StatusInternalServerError, err, "fail to merge images")
 	}
 
-	err = imaging.Save(img, "merged.png", imaging.PNGCompressionLevel(png.DefaultCompression))
-	if err != nil {
-		return wrapError(http.StatusInternalServerError, err, "fail to save image")
+	clientGone := c.Stream(func(w io.Writer) bool {
+		err := imaging.Encode(w, img, imaging.PNG, imaging.PNGCompressionLevel(png.DefaultCompression))
+		if err != nil {
+			log.Error("fail to encode the merged image: ", err)
+		}
+		return false
+	})
+	if clientGone {
+		log.Error("fail to write the merge image to the client. the client was gone.")
 	}
 
 	return nil
 }
 
-func merge(width, height int, resize bool, files []*multipart.FileHeader) (*image.NRGBA, error) {
+func merge(width, height int, resize bool, files []*multipart.FileHeader) (image.Image, error) {
 	dest := imaging.New(width, height, color.NRGBA{0, 0, 0, 0})
 	curDestHeight := 0
 
