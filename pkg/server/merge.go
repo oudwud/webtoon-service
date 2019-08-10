@@ -21,18 +21,17 @@ func mergeImages(c *gin.Context) error {
 	if err != nil {
 		return wrapError(http.StatusBadRequest, nil, "invalid width value: ", c.PostForm("width"))
 	}
-	log.Debug("width:", width)
 
 	height, err := strconv.Atoi(c.PostForm("height"))
 	if err != nil {
 		return wrapError(http.StatusBadRequest, nil, "invalid height value: ", c.PostForm("height"))
 	}
-	log.Debug("height:", height)
 
 	var resize bool
 	if c.PostForm("resize") == "1" {
 		resize = true
 	}
+	log.Debugf("width:%d, height:%d, resize:%v", width, height, resize)
 
 	form, err := c.MultipartForm()
 	if err != nil {
