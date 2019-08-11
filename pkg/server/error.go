@@ -12,7 +12,7 @@ func wrapError(code int, err error, format string, args ...interface{}) error {
 	return &httpError{
 		code:  code,
 		cause: err,
-		msg:   fmt.Sprintf(format, args),
+		msg:   fmt.Sprintf(format, args...),
 	}
 }
 
