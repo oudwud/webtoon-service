@@ -27,11 +27,7 @@ func mergeImages(c *gin.Context) error {
 		return wrapError(http.StatusBadRequest, nil, "invalid height value: ", c.PostForm("height"))
 	}
 
-	var resize bool
-	if c.PostForm("resize") == "1" {
-		resize = true
-	}
-	log.Debugf("width:%d, height:%d, resize:%v", width, height, resize)
+	log.Debugf("width:%d, height:%d", width, height)
 
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -43,7 +39,7 @@ func mergeImages(c *gin.Context) error {
 		return wrapError(http.StatusBadRequest, nil, "no files in the multipart form")
 	}
 
-	img, err := merge(width, height, resize, files)
+	img, err := merge(width, height, files)
 	if err != nil {
 		return wrapError(http.StatusInternalServerError, err, "fail to merge images")
 	}
@@ -62,13 +58,13 @@ func mergeImages(c *gin.Context) error {
 	return nil
 }
 
-func merge(width, height int, resize bool, files []*multipart.FileHeader) (image.Image, error) {
+func merge(width, height int, files []*multipart.FileHeader) (image.Image, error) {
 	dest := imaging.New(width, height, color.NRGBA{0, 0, 0, 0})
 	curDestHeight := 0
 
 	var err error
 	for _, file := range files {
-		dest, curDestHeight, err = putImage(dest, curDestHeight, file, resize)
+		dest, curDestHeight, err = putImage(dest, curDestHeight, file)
 		if err != nil {
 			return nil, errors.Wrap(err, "fail to put image")
 		}
@@ -77,7 +73,7 @@ func merge(width, height int, resize bool, files []*multipart.FileHeader) (image
 	return dest, nil
 }
 
-func putImage(dest *image.NRGBA, curDestHeight int, file *multipart.FileHeader, resize bool) (*image.NRGBA, int, error) {
+func putImage(dest *image.NRGBA, curDestHeight int, file *multipart.FileHeader) (*image.NRGBA, int, error) {
 	destWidth := dest.Bounds().Max.X
 
 	f, err := file.Open()
@@ -89,10 +85,6 @@ func putImage(dest *image.NRGBA, curDestHeight int, file *multipart.FileHeader, 
 	img, err := imaging.Decode(f)
 	if err != nil {
 		return nil, 0, errors.Wrapf(err, "fail to decode the image: %s", file.Filename)
-	}
-
-	if resize {
-		img = imaging.Resize(img, destWidth, 0, imaging.Lanczos)
 	}
 
 	x := (destWidth - img.Bounds().Max.X) / 2
