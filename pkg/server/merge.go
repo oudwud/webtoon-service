@@ -2,14 +2,13 @@ package server
 
 import (
 	"image"
-	"image/color"
+	"image/draw"
 	"image/png"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"strconv"
 
-	"github.com/disintegration/imaging"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
@@ -46,8 +45,7 @@ func mergeImages(c *gin.Context) error {
 	}
 
 	clientGone := c.Stream(func(w io.Writer) bool {
-		err := imaging.Encode(w, img, imaging.PNG, imaging.PNGCompressionLevel(png.DefaultCompression))
-		if err != nil {
+		if err := png.Encode(w, img); err != nil {
 			log.Error("fail to encode the merged image: ", err)
 		}
 		return false
@@ -60,12 +58,15 @@ func mergeImages(c *gin.Context) error {
 }
 
 func merge(width, height int, files []*multipart.FileHeader) (image.Image, error) {
-	dest := imaging.New(width, height, color.NRGBA{0, 0, 0, 0})
+	dest := image.NewNRGBA(image.Rectangle{
+		Min: image.Point{0, 0},
+		Max: image.Point{width, height},
+	})
 	curDestHeight := 0
 
 	var err error
 	for _, file := range files {
-		dest, curDestHeight, err = putImage(dest, curDestHeight, file)
+		curDestHeight, err = putImage(dest, curDestHeight, file)
 		if err != nil {
 			return nil, errors.Wrap(err, "fail to put image")
 		}
@@ -74,21 +75,28 @@ func merge(width, height int, files []*multipart.FileHeader) (image.Image, error
 	return dest, nil
 }
 
-func putImage(dest *image.NRGBA, curDestHeight int, file *multipart.FileHeader) (*image.NRGBA, int, error) {
+func putImage(dest *image.NRGBA, curDestHeight int, file *multipart.FileHeader) (int, error) {
 	destWidth := dest.Bounds().Max.X
 
 	f, err := file.Open()
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "fail to open the multipart file: %s", file.Filename)
+		return 0, errors.Wrapf(err, "fail to open the multipart file: %s", file.Filename)
 	}
 	defer f.Close()
 
-	img, err := imaging.Decode(f)
+	img, _, err := image.Decode(f)
 	if err != nil {
-		return nil, 0, errors.Wrapf(err, "fail to decode the image: %s", file.Filename)
+		return 0, errors.Wrapf(err, "fail to decode the image: %s", file.Filename)
 	}
 
-	x := (destWidth - img.Bounds().Max.X) / 2
-	dest = imaging.Paste(dest, img, image.Pt(x, curDestHeight))
-	return dest, curDestHeight + img.Bounds().Max.Y, nil
+	startingPoint := image.Point{(destWidth - img.Bounds().Dx()) / 2, curDestHeight}
+
+	rect := image.Rectangle{
+		Min: startingPoint,
+		Max: startingPoint.Add(img.Bounds().Size()),
+	}
+
+	draw.Draw(dest, rect, img, image.Point{0, 0}, draw.Src)
+
+	return rect.Max.Y, nil
 }
