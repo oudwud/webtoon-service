@@ -17,22 +17,23 @@ import (
 )
 
 func mergeImages(c *gin.Context) error {
-	width, err := strconv.Atoi(c.PostForm("width"))
-	if err != nil {
-		return wrapError(http.StatusBadRequest, nil, "invalid width value: ", c.PostForm("width"))
-	}
-
-	height, err := strconv.Atoi(c.PostForm("height"))
-	if err != nil {
-		return wrapError(http.StatusBadRequest, nil, "invalid height value: ", c.PostForm("height"))
-	}
-
-	log.Debugf("width:%d, height:%d", width, height)
-
 	form, err := c.MultipartForm()
 	if err != nil {
 		return wrapError(http.StatusBadRequest, err, "fail to get multipart form")
 	}
+	defer form.RemoveAll()
+
+	width, err := strconv.Atoi(c.PostForm("width"))
+	if err != nil {
+		return wrapError(http.StatusBadRequest, nil, "invalid width value: %v", c.PostForm("width"))
+	}
+
+	height, err := strconv.Atoi(c.PostForm("height"))
+	if err != nil {
+		return wrapError(http.StatusBadRequest, nil, "invalid height value: %v", c.PostForm("height"))
+	}
+
+	log.Debugf("width:%d, height:%d", width, height)
 
 	files := form.File["files"]
 	if files == nil {
