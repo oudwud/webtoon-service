@@ -1,4 +1,4 @@
-FROM golang:1.12.7 as webtoon-service-builder
+FROM golang:1.12.7 as builder
 
 LABEL description="Webtoon service image builder"
 LABEL maintainer="Youngjoon Lee taxihighway@gmail.com"
@@ -18,7 +18,7 @@ FROM alpine:3.10
 
 ARG BASEDIR=/opt/webtoon-service
 WORKDIR $BASEDIR
-COPY --from=webtoon-service-builder $BASEDIR/webtoon .
+COPY --from=builder $BASEDIR/webtoon .
 
 EXPOSE 8080
 CMD ["./webtoon"]
